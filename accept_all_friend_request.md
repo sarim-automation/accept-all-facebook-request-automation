@@ -68,6 +68,109 @@ The automation will begin processing immediately.
 
 ```javascript
 // Paste the acceptAllFriendRequests() script here.
+async function acceptAllFriendRequests() {
+  const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+  const randomDelay = (min, max) => delay(Math.floor(Math.random() * (max - min + 1)) + min);
+
+  let processed = 0;
+  let consecutiveFails = 0;
+
+  console.log("🚀 Starting friend request acceptance...");
+  console.log("📌 Make sure you're on: https://www.facebook.com/friends/requests");
+
+  while (true) {
+    // Find all buttons on the page
+    const allButtons = Array.from(document.querySelectorAll('div[role="button"], button, a'));
+    
+    // Find confirm/accept buttons specifically
+    const confirmButtons = allButtons.filter(btn => {
+      const text = btn.textContent.trim().toLowerCase();
+      const aria = (btn.getAttribute('aria-label') || '').toLowerCase();
+      const rect = btn.getBoundingClientRect();
+      
+      // Look for confirm/accept buttons that are visible and reasonably sized
+      const isConfirmButton = text.includes('confirm') || text.includes('accept') || 
+                             text.includes('add friend') || text.includes('add as friend') ||
+                             aria.includes('confirm') || aria.includes('accept') || 
+                             aria.includes('add friend');
+      
+      // Exclude "Delete" or "Remove" buttons
+      const isNotDelete = !text.includes('delete') && !text.includes('remove') && 
+                         !aria.includes('delete') && !aria.includes('remove');
+      
+      const isSmallButton = rect.width > 0 && rect.width < 150 && rect.height > 0 && rect.height < 60;
+      const isVisible = rect.top >= 0 && rect.top < window.innerHeight;
+      
+      return isConfirmButton && isNotDelete && isSmallButton && isVisible;
+    });
+
+    if (confirmButtons.length === 0) {
+      // Try scrolling to load more requests
+      window.scrollBy(0, 500);
+      await randomDelay(1500, 2500);
+      
+      consecutiveFails++;
+      if (consecutiveFails > 5) {
+        console.log(`✅ All done! Accepted ${processed} friend requests.`);
+        break;
+      }
+      continue;
+    }
+
+    consecutiveFails = 0;
+
+    // Process each confirm button
+    for (const btn of confirmButtons) {
+      const btnText = btn.textContent.trim() || btn.getAttribute('aria-label');
+      console.log(`✅ Accepting request: "${btnText}"`);
+      
+      btn.scrollIntoView({ block: "center" });
+      await randomDelay(300, 600);
+      
+      btn.click();
+      await randomDelay(1000, 1500);
+
+      // Look for confirmation dialog (some requests might need confirmation)
+      const allButtonsAfterClick = Array.from(document.querySelectorAll(
+        'div[role="button"], button, a'
+      ));
+      
+      const confirmDialogBtn = allButtonsAfterClick.find(el => {
+        const modal = el.closest('div[role="dialog"]') || 
+                     el.closest('div[aria-modal="true"]') || 
+                     el.closest('div[data-type="modal"]');
+        
+        if (modal) {
+          const text = el.textContent.trim().toLowerCase();
+          const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+          return text.includes('confirm') || text.includes('accept') || 
+                 aria.includes('confirm') || aria.includes('accept');
+        }
+        return false;
+      });
+
+      if (confirmDialogBtn) {
+        confirmDialogBtn.click();
+        processed++;
+        console.log(`✅ Accepted request #${processed} (confirmed in dialog)`);
+        await randomDelay(1000, 1500);
+      } else {
+        // No confirmation dialog needed
+        processed++;
+        console.log(`✅ Accepted request #${processed}`);
+      }
+
+      await randomDelay(1500, 2500);
+    }
+
+    // Scroll to load more
+    window.scrollBy(0, 800);
+    await randomDelay(1000, 2000);
+  }
+}
+
+// Run the script
+acceptAllFriendRequests();
 ```
 
 ---
